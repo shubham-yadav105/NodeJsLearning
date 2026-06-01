@@ -1,0 +1,71 @@
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient(); // like using the DB facade in Laravel
+
+// GET /users - like User::all()
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await prisma.user.findMany();
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// GET /users/:id - like User::findOrFail($id)
+const getUserById = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: parseInt(req.params.id) }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// POST /users - like User::create($request->all())
+const createUser = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+
+        if (!name || !email) {
+            return res.status(400).json({ message: "Name and email are required" });
+        }
+
+        const newUser = await prisma.user.create({
+            data: { name, email }
+        });
+
+        res.status(201).json(newUser);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// DELETE /users/:id - like User::destroy($id)
+const deleteUser = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: parseInt(req.params.id) }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        await prisma.user.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+
+        res.json({ message: "User deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getAllUsers, getUserById, createUser, deleteUser };
