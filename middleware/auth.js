@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "your_secret_key_here";
+const JWT_SECRET = process.env.JWT_SECRET; // in real apps put this in .env;
 
 // Like Laravel's auth:sanctum middleware
 const authMiddleware = (req, res, next) => {

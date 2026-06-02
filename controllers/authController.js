@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const prisma = new PrismaClient();
 
-const JWT_SECRET = "your_secret_key_here"; // in real apps put this in .env
+const JWT_SECRET = process.env.JWT_SECRET; // in real apps put this in .env
 
 // REGISTER - like AuthController@register in Laravel
 const register = async (req, res) => {
