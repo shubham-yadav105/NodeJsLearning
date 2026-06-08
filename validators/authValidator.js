@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 // Like Laravel validation rules for register
 const registerSchema = Joi.object({
-    name:Joi.string()
+    name: Joi.string()
         .min(3)
         .max(50)
         .required()
@@ -12,14 +12,22 @@ const registerSchema = Joi.object({
             "any.required": "Name is required"
         }),
 
-        email: Joi.string()
+    email: Joi.string()
         .email()
         .required()
         .messages({
-            "string.email": "please provide be at least 6 characters",
+            "string.email": "please provide a valid email",
             "any.required": "Email is required"
         }),
-
+    password: Joi.string()
+        .min(6)
+        .max(100)
+        .required()
+        .messages({
+            "string.min": "Password must be at least 6 characters",
+            "string.max": "Password cannot exceed 100 characters",
+            "any.required": "Password is required"
+        }),
 });
 
 // Like Laravel validation rules for login
@@ -35,8 +43,10 @@ const loginSchema = Joi.object({
     password: Joi.string()
         .required()
         .messages({
-            'any.required': "password is required"
+            "string.min": "Password must be at least 6 characters",
+            "string.max": "Password cannot exceed 100 characters",
+            "any.required": "Password is required"
         }),
 });
 
-module.exports = { registerSchema, loginSchema};
+module.exports = { registerSchema, loginSchema };
