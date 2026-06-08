@@ -3,15 +3,18 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const validate = require("../middleware/validate");
+const { createUserSchema, updateUserSchema } = require("../validators/userValidator");
 
-const {getAllUsers, getUserById, createUser, deleteUser }
+const {getAllUsers, getUserById, createUser, updateUser, deleteUser }
     = require('../controllers/userController'); // like use App\Http\Constrollers\UserController in laravel
    
     // Like Route::get('/users', [UserController::class, 'index'])
     router.use(authMiddleware); // like Route::middleware('auth:sanctum)
     router.get('/', getAllUsers);
     router.get('/:id', getUserById); // like Route::get('/users/{id}', [UserController::class, 'show'])
-    router.post('/', createUser);
+    router.post('/', validate(createUserSchema), createUser);
+    router.put('/:id', validate(updateUserSchema), updateUser); // like Route::put('/users/{id}', [UserController::class, 'update]);
     router.delete('/:id', deleteUser); // like Route::delete('/users/{id}', [UserController::class, 'destroy'])
 
     module.exports = router; // like return $router->group() in laravel
