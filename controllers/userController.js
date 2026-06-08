@@ -47,6 +47,30 @@ const createUser = async (req, res) => {
     }
 };
 
+// Put /users/:id - like update() in Laravel
+const updateUser = async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { name, email } = req.body;
+        const user = await prisma.user.findUnique({ where: { id } });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        const updateUser = await prisma.user.update({
+            where: { id },
+            data: { name, email } // only update fields that are provided - like $request->only() in Laravel
+
+        });
+        res.json(updateUser);
+
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+
+};
+
 // DELETE /users/:id - like User::destroy($id)
 const deleteUser = async (req, res) => {
     try {
@@ -68,4 +92,4 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, getUserById, createUser, deleteUser };
+module.exports = { getAllUsers, getUserById, createUser, updateUser, deleteUser };
