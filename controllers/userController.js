@@ -9,7 +9,7 @@ const getAllUsers = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-}; 
+};
 
 // GET /users/:id - like User::findOrFail($id)
 const getUserById = async (req, res) => {
