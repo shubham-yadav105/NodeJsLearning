@@ -21,7 +21,7 @@ const createTag = async (req, res) => {
         const { name } = req.body;
         const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-        const existing = await prisma.tag.findUnque({ where: { slug } });
+        const existing = await prisma.tag.findUnique({ where: { slug } });
         if (existing) {
             return res.status(400).json({ message: "Tag already exists" });
         }

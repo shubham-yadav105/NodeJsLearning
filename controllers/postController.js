@@ -1,178 +1,220 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require('@prisma/client');
+const { parse } = require('dotenv');
+
 const prisma = new PrismaClient();
-const path = require("path");
-const fs = require("fs");
+
+// GET /posts - get all posts with their user (like Post::with('user')->get())
+
+// const getAllPosts = async (req, res) => {
+//     try {
+//         const posts = await prisma.post.findMany({
+//             include:
+//             {
+//                 user: {
+//                     select: { id: true, name: true, email: true } // hide password 
+//                 }
+//             } // eager load the user relationship 
+//         });
+//         res.json(posts);
+//     }
+//     catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// };
 
 const getAllPosts = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-        const search = req.query.search || "";
-        const categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
-        const tagId = req.query.tagId ? parseInt(req.query.tagId) : null;
 
-        // Build filters dynamically
+        const skip = (page - 1) * limit;
+
+        const search = req.query.search || "";  // search term 
+        const userId = req.query.userId ? parseInt(req.query.userId) : null;
+
         const filters = {};
+
         if (search) {
             filters.OR = [
-                { title: { contains: search } },
-                { body: { contains: search } }
+                { title: { contains: search } }, // search in title
+                { body: { contains: search } }   // OR search in body
             ];
         }
-        if (categoryId) filters.categoryId = categoryId;
 
-        // filter by tag - through junction table
-        if (tagId) {
-            filters.tags = { some: { tagId } };
+        if(userId) {
+            filters.userId = userId;
         }
 
         const [posts, totalPosts] = await Promise.all([
             prisma.post.findMany({
-                skip, take: limit, where: filters,
+                skip,
+                take: limit,
+                where: filters, 
                 include: {
-                    user: { select: { id: true, name: true, avatar: true } },
-                    category: true,
-                    tags: { include: { tag: true } },
-                    _count: { select: { comments: true } }
+                    user: {
+                        select: { id: true, name: true, email: true }
+                    }
                 },
-                orderBy: { createdAt: "desc" }
+                orderBy: {
+                    createdAt: "desc"  // newest first - like orderBy('created_at', 'desc)
+
+                }
             }),
-            prisma.post.count({ where: filters })
+            prisma.post.count({
+                where: filters
+            }) // count total posts - like Post::count() in Laravel
         ]);
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        // Send back paginated response - like Len
 
         res.json({
-            data: posts,
+            data: posts,    // the actual posts
             meta: {
                 currentPage: page,
-                totalPages: Math.ceil(totalPosts / limit),
+                totalPages,
                 totalPosts,
-                hasNextPage: page < Math.ceil(totalPosts / limit),
-                hasPrevPage: page > 1
+                limit,
+                hasNextPage: page < totalPages, // is there a next page?
+                hasPrevPage: page > 1 ,  // is there a previous page?
+                search,
+                userId
             }
         });
-    } catch (error) {
+    }
+    catch (error) {
         res.status(500).json({ message: error.message });
     }
+
 };
 
+
+
+// GET /posts/:id - get a single post by id with its user (like Post::with('user')->findOrFail($id))
 const getPostById = async (req, res) => {
     try {
         const post = await prisma.post.findUnique({
             where: { id: parseInt(req.params.id) },
             include: {
-                user: { select: { id: true, name: true, avatar: true } },
-                category: true,
-                tags: { include: { tag: true } },
-                comments: {
-                    include: {
-                        user: { select: { id: true, name: true, avatar: true } }
-                    },
-                    orderBy: { createdAt: "desc" }
-                },
-                _count: { select: { comments: true } }
+                user: {
+                    select: { id: true, name: true, email: true } // hide password
+
+                }
             }
         });
-
-        if (!post) return res.status(404).json({ message: "Post not found" });
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
         res.json(post);
-    } catch (error) {
+    }
+    catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// GET /users/:id/posts - get all posts by a user (like $user->posts)
+
+const getPostsByUser = async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id)
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                posts: true // like $user->posts in laravel 
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({
+            user: { id: user.id, name: user.name, email: user.email },
+            posts: user.posts
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// POST /Post - create post for logged in user
 const createPost = async (req, res) => {
     try {
-        const { title, body, categoryId, tagIds } = req.body;
-        const userId = req.user.id;
-
-        // Auto calculate reading time
-        // Average person reads 200 words per minute
-        const wordCount = body.split(" ").length;
-        const readingTime = Math.ceil(wordCount / 200); // in minutes
-
-        // Handle thumbnail if uploaded
-        const thumbnail = req.file ? "uploads/" + req.file.filename : null;
+        const { title, body } = req.body;
+        const userId = req.user.id; // from JWT token - like auth()->id() in Laravel 
 
         const post = await prisma.post.create({
-            data: {
-                title,
-                body,
-                thumbnail,
-                readingTime, // auto calculated!
-                userId,
-                categoryId: categoryId ? parseInt(categoryId) : null,
-                // Connect tags - like sync() in Laravel
-                tags: tagIds ? {
-                    create: JSON.parse(tagIds).map(tagId => ({
-                        tag: { connect: { id: parseInt(tagId) } }
-                    }))
-                } : undefined
-            },
-            include: {
-                user: { select: { id: true, name: true } },
-                category: true,
-                tags: { include: { tag: true } }
-            }
+            data: { title, body, userId }
         });
 
         res.status(201).json(post);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message })
     }
 };
 
+// PUT /posts/:id - update post (only owner can update)
 const updatePost = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const userId = req.user.id;
-        const { title, body, categoryId } = req.body;
+        const { title, body } = req.body;
 
         const post = await prisma.post.findUnique({ where: { id } });
-        if (!post) return res.status(404).json({ message: "Post not found" });
-        if (post.userId !== userId) {
-            return res.status(403).json({ message: "You can only update your own posts" });
+
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
         }
 
-        // Recalculate reading time if body changed
-        const readingTime = body ? Math.ceil(body.split(" ").length / 200) : post.readingTime;
+        // Only owner can update - like $this->authorize('update', $post)
+        if (post.userId !== userId) {
+            return res.status(403).json({ message: "You can olny update your own posts" });
+        }
 
-        const updatedPost = await prisma.post.update({
+        const updatePost = await prisma.post.update({
             where: { id },
-            data: {
-                title, body, readingTime,
-                categoryId: categoryId ? parseInt(categoryId) : null
-            }
+            data: { title, body }
         });
 
         res.json(updatedPost);
-    } catch (error) {
+    }
+    catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// DELETE /posts/:id - delete post (only owner can delete )
 const deletePost = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const userId = req.user.id;
 
         const post = await prisma.post.findUnique({ where: { id } });
-        if (!post) return res.status(404).json({ message: "Post not found" });
-        if (post.userId !== userId) {
-            return res.status(403).json({ message: "You can only delete your own posts" });
+
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
         }
 
-        // Delete thumbnail file if exists
-        if (post.thumbnail) {
-            const filePath = path.join(__dirname, "..", post.thumbnail);
-            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        // Olny owner can delete 
+
+        if (post.userId !== userId) {
+            return res.status(403).json({ message: "You can olny delete your own posts" });
         }
 
         await prisma.post.delete({ where: { id } });
-        res.json({ message: "Post deleted successfully" });
-    } catch (error) {
+        res.json({ message: "Post deleted successfully " });
+    }
+    catch (error) {
         res.status(500).json({ message: error.message });
     }
+
 };
 
-module.exports = { getAllPosts, getPostById, createPost, updatePost, deletePost };
+// module.export = { getAllPosts, getPostById, getPostsByUser, createPost, updatePost, deletePost}
+
+module.exports = { getAllPosts, getPostById, getPostsByUser, createPost, updatePost, deletePost };

@@ -1,22 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const { getAllPosts, getPostById, createPost, updatePost, deletePost } = require("../controllers/postController");
 const authMiddleware = require("../middleware/auth");
-const validate = require("../middleware/validate");
-const { createPostSchema, updatePostSchema } = require("../validators/postValidator");
-const {
-    getAllPosts,
-    getPostById,
-    createPost,
-    updatePost,
-    deletePost
-} = require("../controllers/postController");
+const upload = require("../middleware/upload");
+const commentRoutes = require("./commentRoutes");
 
-router.use(authMiddleware);
+router.use("/:postId/comments", commentRoutes);
 
 router.get("/", getAllPosts);
 router.get("/:id", getPostById);
-router.post("/", validate(createPostSchema), createPost);
-router.put("/:id", validate(updatePostSchema), updatePost);
-router.delete("/:id", deletePost);
+router.post("/", authMiddleware, upload.single("thumbnail"), createPost);
+router.put("/:id", authMiddleware, updatePost);
+router.delete("/:id", authMiddleware, deletePost);
 
 module.exports = router;

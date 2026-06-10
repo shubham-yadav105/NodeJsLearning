@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,14 +8,31 @@ datasource db {
 }
 
 model User {
-  id        Int @id @default(autoincrement())
-  name      String 
-  email     String @unique
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
   password  String
-  avatar    String? // ? means optional - like nullable() in Laravel
-  posts     Post[]      // user has many posts
+  avatar    String?
+  posts     Post[]
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  posts     Post[]
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  slug      String    @unique
+  posts     PostTag[]
+  createdAt DateTime  @default(now())
 }
 
 model Post {
@@ -29,7 +40,7 @@ model Post {
   title       String
   body        String    @db.Text
   thumbnail   String?
-  readingTime Int       @default(0) // auto calculated reading time
+  readingTime Int       @default(0)
   userId      Int
   categoryId  Int?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -38,4 +49,24 @@ model Post {
   comments    Comment[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model PostTag {
+  postId Int
+  tagId  Int
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  userId    Int
+  postId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
