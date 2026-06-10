@@ -5,22 +5,90 @@ const prisma = new PrismaClient();
 
 // GET /posts - get all posts with their user (like Post::with('user')->get())
 
+// const getAllPosts = async (req, res) => {
+//     try {
+//         const posts = await prisma.post.findMany({
+//             include:
+//             {
+//                 user: {
+//                     select: { id: true, name: true, email: true } // hide password 
+//                 }
+//             } // eager load the user relationship 
+//         });
+//         res.json(posts);
+//     }
+//     catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// };
+
 const getAllPosts = async (req, res) => {
     try {
-        const posts = await prisma.post.findMany({
-            include:
-            {
-                user: {
-                    select: { id: true, name: true, email: true } // hide password 
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const skip = (page - 1) * limit;
+
+        const search = req.query.search || "";  // search term 
+        const userId = req.query.userId ? parseInt(req.query.userId) : null;
+
+        const filters = {};
+
+        if (search) {
+            filters.OR = [
+                { title: { contains: search } }, // search in title
+                { body: { contains: search } }   // OR search in body
+            ];
+        }
+
+        if(suerId) {
+            filters.userId = userId;
+        }
+
+        const [posts, totalPosts] = await Promise.all([
+            prisma.post.findMany({
+                skip,
+                take: limit,
+                where: filters, 
+                include: {
+                    user: {
+                        select: { id: true, name: true, email: true }
+                    }
+                },
+                orderBy: {
+                    createdAt: "desc"  // newest first - like orderBy('created_at', 'desc)
+
                 }
-            } // eager load the user relationship 
+            }),
+            prisma.post.count({
+                where: filters
+            }) // count total posts - like Post::count() in Laravel
+        ]);
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        // Send back paginated response - like Len
+
+        res.json({
+            data: posts,    // the actual posts
+            meta: {
+                currentPage: page,
+                totalPages,
+                totalPosts,
+                limit,
+                hasNextPage: page < totalPages, // is there a next page?
+                hasPrevPage: page > 1 ,  // is there a previous page?
+                search,
+                userId
+            }
         });
-        res.json(posts);
     }
     catch (error) {
         res.status(500).json({ message: error.message });
     }
+
 };
+
+
 
 // GET /posts/:id - get a single post by id with its user (like Post::with('user')->findOrFail($id))
 const getPostById = async (req, res) => {

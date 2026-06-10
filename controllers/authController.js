@@ -84,4 +84,26 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+const getProfile = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                createdAt: true,
+                // count their posts and comments
+                _count: {
+                    select: { posts: true, comments: true }
+                }
+            }
+        });
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { register, login, getProfile };
