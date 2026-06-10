@@ -3,6 +3,8 @@ const express = require("express");
 const path = require("path");
 const app = express();
 
+const PORT = process.env.PORT || 3000;
+
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -23,6 +25,6 @@ app.use("/categories", categoryRoutes);
 app.use("/tags", tagRoutes);
 app.use("/comments", commentRoutes);
 
-app.listen(3000, () => {
-    console.log("Blog API running on http://localhost:3000");
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });
