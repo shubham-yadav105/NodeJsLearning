@@ -1,4 +1,4 @@
-const { PrismClient } = require('@prisma/client');
+const { PrismaClient } = require('@prisma/client');
 const { parse } = require('dotenv');
 
 const prisma = new PrismaClient();
@@ -124,7 +124,7 @@ const updatePost = async (req, res) => {
 const deletePost = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const userid = req.user.id;
+        const userId = req.user.id;
 
         const post = await prisma.post.findUnique({ where: { id } });
 
@@ -147,4 +147,6 @@ const deletePost = async (req, res) => {
 
 };
 
-module.export = { getAllPosts, getPostById, getPostByUser, createPost, updatePost, deletePost}
+// module.export = { getAllPosts, getPostById, getPostsByUser, createPost, updatePost, deletePost}
+
+module.exports = { getAllPosts, getPostById, getPostsByUser, createPost, updatePost, deletePost };
