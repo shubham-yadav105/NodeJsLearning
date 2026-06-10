@@ -1,8 +1,10 @@
 const express = require('express');
 const app = express();
 require("dotenv").config(); // like Laravel auto-loading .env
+const path = require("path");
 
 app.use(express.json()); // for parsing application/json
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Register routes - like Route::apiResource('users', UserController::class) in laravel
 const userRoutes = require('./routes/userRoutes');

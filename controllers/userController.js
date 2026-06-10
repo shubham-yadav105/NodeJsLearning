@@ -125,7 +125,7 @@ const uploadAvatar = async (req, res) => {
 
         res.json({
             message: "Avatar uploaded successfully",
-            user: updateUser
+            user: updatedUser
         });
     }
     catch (error) {
@@ -150,4 +150,4 @@ const getAvatar = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, getUserById, createUser, updateUser, deleteUser };
+module.exports = { getAllUsers, getUserById, createUser, updateUser, deleteUser, uploadAvatar, getAvatar };
